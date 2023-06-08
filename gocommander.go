@@ -31,6 +31,8 @@ func main() {
 	flag.Parse()
 
 	for _, cmd := range cmds {
-		cmd.Run()
+		if err := cmd.Run(); err != nil {
+			fmt.Println(err)
+		}
 	}
 }

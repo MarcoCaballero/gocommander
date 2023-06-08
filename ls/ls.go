@@ -1,7 +1,6 @@
 package ls
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -20,34 +19,53 @@ func NewLister(path string) *Lister {
 }
 
 func (lister *Lister) Run() error {
-	if !fs.ValidPath(lister.path) {
-		return errors.New("Invalid path")
-	}
-
-	if _, err := os.Stat(lister.path); err != nil {
+	file, err := os.Open(lister.path)
+	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 50, 0, '\t', 0)
 	defer w.Flush()
-	err := fs.WalkDir(os.DirFS(lister.path), ".", func(path string, d fs.DirEntry, err error) error {
-		info, infoErr := d.Info()
-		if infoErr == nil {
-			printInfoLine(w, info)
-		}
-		return infoErr
-	})
+
+	err = writeDirContent(w, file)
+
 	return err
 }
 
-func printInfoLine(w *tabwriter.Writer, info fs.FileInfo) {
+func writeDirContent(w *tabwriter.Writer, file *os.File) error {
+	entries, err := file.ReadDir(0)
+	if err != nil {
+		return err
+	}
+
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	writeFileInfo(w, info)
+
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		writeFileInfo(w, info)
+	}
+
+	return nil
+}
+
+func writeFileInfo(w *tabwriter.Writer, info fs.FileInfo) {
 	infoTime := info.ModTime()
 
 	switch time.Now().Year() {
 	case infoTime.Year():
-		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%02d:%02d\t%v\t\n", info.Mode(), info.Size(), infoTime.Month(), infoTime.Day(), infoTime.Hour(), infoTime.Minute(), info.Name())
+		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%02d:%02d\t%v\t\n",
+			info.Mode(), info.Size(), infoTime.Month(), infoTime.Day(), infoTime.Hour(), infoTime.Minute(), info.Name())
 	default:
-		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t\n", info.Mode(), info.Size(), infoTime.Month(), infoTime.Day(), infoTime.Year(), info.Name())
+		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t\n",
+			info.Mode(), info.Size(), infoTime.Month(), infoTime.Day(), infoTime.Year(), info.Name())
 	}
 }
