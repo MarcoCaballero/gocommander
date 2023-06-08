@@ -43,10 +43,11 @@ func (lister *Lister) Run() error {
 
 func printInfoLine(w *tabwriter.Writer, info fs.FileInfo) {
 	infoTime := info.ModTime()
-	hourOrYear := fmt.Sprint(infoTime.Year())
-	if time.Now().Year() == infoTime.Year() {
-		hourOrYear = fmt.Sprint(infoTime.Hour(), ":", infoTime.Minute())
+
+	switch time.Now().Year() {
+	case infoTime.Year():
+		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%02d:%02d\t%v\t\n", info.Mode(), info.Size(), infoTime.Month(), infoTime.Day(), infoTime.Hour(), infoTime.Minute(), info.Name())
+	default:
+		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t\n", info.Mode(), info.Size(), infoTime.Month(), infoTime.Day(), infoTime.Year(), info.Name())
 	}
-	fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t", info.Mode(), info.Size(), infoTime.Month(), infoTime.Day(), hourOrYear, info.Name())
-	fmt.Fprintln(w)
 }
